@@ -5,8 +5,14 @@ use cortex_m_rt::{entry, exception};
 use stm32l4::stm32l4r5;
 
 // Which address should be corrupted, with an allowed range
-const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x6000;
+const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x7350;
 const CORRUPT_RANGE: usize = 0x20;
+static_assertions::const_assert!(CORRUPT_RANGE > 0);
+
+// On the first page, this tool itself lies. Don't let it erase itself!
+// In dual bank mode, the first page is 4096 bytes, so we can't corrupt the first page.
+// If you are in single-bank mode, don't go below 8192
+static_assertions::const_assert!(APPROXIMATE_ADDRESS_TO_CORRUPT >= 8192);
 
 mod flash;
 mod hw;
@@ -49,6 +55,7 @@ macro_rules! bad_thing_happened {
             if dead_addr >= APPROXIMATE_ADDRESS_TO_CORRUPT as u32
                 && dead_addr < (APPROXIMATE_ADDRESS_TO_CORRUPT + CORRUPT_RANGE) as u32
             {
+                // We're done!
                 set_green_led(true);
 
                 loop {
@@ -110,13 +117,15 @@ fn main() -> ! {
     let mut bottom = peripherals.RTC.bkpr[1].read().bits();
     let mut top = peripherals.RTC.bkpr[2].read().bits();
     let mut middle = (bottom + top) / 2;
-    let isVerySimilar = top - bottom < 1000;
+
+    // If we are very close, we have likely missed the exact time and need to try again
+    let very_similar = top - bottom < 1000;
 
     let state = peripherals.RTC.bkpr[3].read().bits();
 
     if state == STATE_BEFORE_WRITE {
         // Apparently we run too long before the reset, so we need to go down
-        top = if isVerySimilar {
+        top = if very_similar {
             middle + 250000
         } else {
             middle
@@ -124,7 +133,7 @@ fn main() -> ! {
         peripherals.RTC.bkpr[2].write(|w| unsafe { w.bits(top) });
     } else if state == STATE_AFTER_WRITE {
         // Apparently reset too late, so go up a bit
-        bottom = if isVerySimilar {
+        bottom = if very_similar {
             middle - 250000
         } else {
             middle
@@ -135,7 +144,8 @@ fn main() -> ! {
 
     peripherals.RTC.bkpr[3].write(|w| unsafe { w.bits(STATE_BEFORE_WRITE) });
 
-    // We basically do a binary search over multiple resets to find the right time to corrupt
+    // We basically do a binary search over multiple resets to find the right time to corrupt,
+    // but with the similarity check we also jump around a bit to avoid getting stuck
 
     set_green_led(false);
     set_red_led(false);
@@ -162,7 +172,7 @@ fn main() -> ! {
     let mut flash_unlocked = flash.unlock().unwrap();
     flash_unlocked.erase_page(page_number).unwrap();
 
-    // Now we have 0.125ms until we have to be within a write
+    // After this, we have 0.125ms until we have to be within a write
     watchdog_feed_min(&peripherals.IWDG);
 
     // This gets us towards the time window...
@@ -171,7 +181,7 @@ fn main() -> ! {
         core::hint::black_box(0);
     }
 
-    // and this is the write that actually corrupts the flash
+    // ...and this is the write that actually corrupts the flash
     flash_unlocked
         .write_dwords(
             &peripherals.SCB_ACTRL,

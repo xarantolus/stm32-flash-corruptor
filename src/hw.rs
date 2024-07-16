@@ -60,10 +60,6 @@ pub fn watchdog_feed(iwdg: &stm32l4r5::IWDG) {
     iwdg.kr.write(|w| w.key().reset());
 }
 
-
-/// Sets up the minimum required resources for failsafe and soft boot.
-/// In order to use the RTC backup registers, we must
-/// enable power for RTC and allow writing to RTC registers
 pub fn enable_rtc(rcc: &RCC, rtc: &RTC, pwr: &PWR) {
     // Enable clock power - otherwise reading backup registers will return zero
     rcc.apb1enr1.modify(|_, w| w.pwren().set_bit().rtcapben().set_bit());

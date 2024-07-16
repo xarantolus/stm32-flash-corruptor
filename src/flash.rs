@@ -3,9 +3,7 @@ use core::ops::Deref;
 use cortex_m::asm::dmb;
 use stm32l4::stm32l4r5::{self, SCB_ACTRL};
 
-/// Exhaustive list of errors that can happen during flashing
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(kani, derive(kani::Arbitrary, PartialEq, Eq))]
 pub enum Error {
     /// Unlocking the flash failed. This should never happen and requires a reset to escape from
     UnlockFailed = 0b1,
