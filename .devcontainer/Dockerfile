@@ -10,6 +10,7 @@ RUN ln -s /usr/bin/gdb-multiarch /usr/bin/arm-none-eabi-gdb
 
 RUN rustup target add thumbv7em-none-eabi
 RUN rustup component add llvm-tools-preview
+RUN rustup component add rustfmt
 RUN cargo install --locked cargo-binutils@0.3.6
 
 # Install specific version of stlink tools
