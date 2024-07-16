@@ -1,0 +1,55 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-dockerfile
+{
+	"name": "Container",
+	"build": {
+		"context": "..",
+		"dockerfile": "Dockerfile"
+	},
+	"runArgs": [
+		// Required for USB device access for flashing
+		"--privileged",
+		// If we don't mount /dev, we can only access devices that were available when
+		// the container was started, not those that were plugged in while it was running
+		"-v",
+		"/dev:/dev"
+	],
+	"mounts": [
+		"type=bind,source=${localWorkspaceFolder},target=/work"
+		//"type=bind,source=/home/${localEnv:USER}/.ssh,target=/root/.ssh,readonly"
+	],
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "cat /etc/os-release",
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"donjayamanne.githistory",
+				"davidanson.vscode-markdownlint",
+				"streetsidesoftware.code-spell-checker",
+				"rust-lang.rust-analyzer",
+				"marus25.cortex-debug",
+				"vadimcn.vscode-lldb",
+				"ryanluker.vscode-coverage-gutters",
+				"ms-vscode.hexeditor"
+			]
+		}
+	},
+	"features": {
+		// This allows connecting to the host docker daemon from inside the container
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	// Policies that allow debugging inside of container
+	"capAdd": [
+		"SYS_PTRACE"
+	],
+	"securityOpt": [
+		"seccomp=unconfined"
+	],
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "root"
+}
