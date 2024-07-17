@@ -5,8 +5,8 @@ use cortex_m_rt::{entry, exception};
 use stm32l4::stm32l4r5;
 
 // Which address should be corrupted, with an allowed range
-const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x7350;
-const CORRUPT_RANGE: usize = 0x20;
+const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x2000;
+const CORRUPT_RANGE: usize = 0x8;
 static_assertions::const_assert!(CORRUPT_RANGE > 0);
 
 // On the first page, this tool itself lies. Don't let it erase itself!
@@ -25,6 +25,10 @@ fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
     set_red_led(true);
 
     let peripherals = unsafe { stm32l4r5::Peripherals::steal() };
+
+    // Clear backup register zero - allows manual reset
+    peripherals.RTC.bkpr[0].write(|w| unsafe { w.bits(0) });
+
     loop {
         watchdog_feed_min(&peripherals.IWDG);
     }
@@ -114,30 +118,26 @@ fn main() -> ! {
         peripherals.RTC.bkpr[3].write(|w| unsafe { w.bits(0) });
     }
 
+    // This is a reset counter, which is interesting when debugging
+    peripherals.RTC.bkpr[4].modify(|r, w| unsafe { w.bits(r.bits() + 1) });
+
     let mut bottom = peripherals.RTC.bkpr[1].read().bits();
     let mut top = peripherals.RTC.bkpr[2].read().bits();
     let mut middle = (bottom + top) / 2;
 
     // If we are very close, we have likely missed the exact time and need to try again
-    let very_similar = top - bottom < 1000;
+    let very_similar = top - bottom < 5;
+    assert!(!very_similar);
 
     let state = peripherals.RTC.bkpr[3].read().bits();
 
     if state == STATE_BEFORE_WRITE {
         // Apparently we run too long before the reset, so we need to go down
-        top = if very_similar {
-            middle + 250000
-        } else {
-            middle
-        };
+        top = middle;
         peripherals.RTC.bkpr[2].write(|w| unsafe { w.bits(top) });
     } else if state == STATE_AFTER_WRITE {
         // Apparently reset too late, so go up a bit
-        bottom = if very_similar {
-            middle - 250000
-        } else {
-            middle
-        };
+        bottom = middle;
         peripherals.RTC.bkpr[1].write(|w| unsafe { w.bits(bottom) });
     }
     middle = (bottom + top) / 2;
