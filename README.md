@@ -38,3 +38,5 @@ Use this command to show backup register content:
 ```gdb
 x/32w 0x40002850
 ```
+
+Take a look at the comments in [`main.rs`](src/main.rs) for more info on each register.

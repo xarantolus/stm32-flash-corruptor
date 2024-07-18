@@ -5,7 +5,7 @@ use cortex_m_rt::{entry, exception};
 use stm32l4::stm32l4r5;
 
 // Which address should be corrupted, with an allowed range
-const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x2000;
+const APPROXIMATE_ADDRESS_TO_CORRUPT: usize = 0x2300;
 const CORRUPT_RANGE: usize = 0x8;
 static_assertions::const_assert!(CORRUPT_RANGE > 0);
 
@@ -98,6 +98,13 @@ const STATE_BEFORE_WRITE: u32 = 1;
 const STATE_AFTER_WRITE: u32 = 2;
 
 const MAGIC_VALUE: u32 = 0x99999999;
+
+// Backup register use:
+// 0: Magic value to detect first boot
+// 1: Bottom of the waiting range (for binary search)
+// 2: Top of the waiting range
+// 3: State we are currently in (allows us to detect if last reset was before or after write)
+// 4: Reset counter
 
 #[entry]
 fn main() -> ! {
