@@ -86,6 +86,7 @@ unsafe fn HardFault(_: &cortex_m_rt::ExceptionFrame) -> ! {
 
 #[exception]
 unsafe fn NonMaskableInt() -> ! {
+    // This should be the only thing getting called, as it's a non-maskable interrupt
     bad_thing_happened!()
 }
 
