@@ -62,7 +62,8 @@ pub fn watchdog_feed(iwdg: &stm32l4r5::IWDG) {
 
 pub fn enable_rtc(rcc: &RCC, rtc: &RTC, pwr: &PWR) {
     // Enable clock power - otherwise reading backup registers will return zero
-    rcc.apb1enr1.modify(|_, w| w.pwren().set_bit().rtcapben().set_bit());
+    rcc.apb1enr1
+        .modify(|_, w| w.pwren().set_bit().rtcapben().set_bit());
     // For the APB register:
     // "After the enable bit is set, there is a 2 clock cycles delay before the clock be active."
     // In theory the APB clock is the same as the CPU clock, SYSCLG
@@ -78,6 +79,11 @@ pub fn enable_rtc(rcc: &RCC, rtc: &RTC, pwr: &PWR) {
     // Per default tamper detection is off, but disable backup
     // register erase on tamper detection just to be safe.
     rtc.tampcr.modify(|_, w| {
-        w.tamp1noerase().set_bit().tamp2noerase().set_bit().tamp3noerase().set_bit()
+        w.tamp1noerase()
+            .set_bit()
+            .tamp2noerase()
+            .set_bit()
+            .tamp3noerase()
+            .set_bit()
     });
 }

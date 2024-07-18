@@ -184,8 +184,8 @@ fn main() -> ! {
     // ...and this is the write that actually corrupts the flash
     flash_unlocked
         .write_dwords(
-            &peripherals.SCB_ACTRL,
             APPROXIMATE_ADDRESS_TO_CORRUPT as *mut usize,
+            // We write zero, because the flash page is all 0xff right now
             &[0u64; CORRUPT_RANGE / core::mem::size_of::<u64>() + 1],
         )
         .unwrap();

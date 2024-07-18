@@ -1,7 +1,7 @@
 use core::ops::Deref;
 
 use cortex_m::asm::dmb;
-use stm32l4::stm32l4r5::{self, SCB_ACTRL};
+use stm32l4::stm32l4r5;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Error {
@@ -233,12 +233,7 @@ impl<'a> FlashUnlocked<'a> {
     /// This must only be called when the following is true:
     /// - The flash is unlocked
     /// - The target page(s) have been erased before
-    pub fn write_dwords(
-        &mut self,
-        actrl: &SCB_ACTRL,
-        mut address: *mut usize,
-        array: &[u64],
-    ) -> Result<(), Error> {
+    pub fn write_dwords(&mut self, mut address: *mut usize, array: &[u64]) -> Result<(), Error> {
         // See reference manual, "3.3.7 Flash main memory programming sequences"
         // We do "Standard programming"
 
@@ -261,17 +256,6 @@ impl<'a> FlashUnlocked<'a> {
                 core::ptr::write_volatile(address.add(1), (*dword >> 32) as usize);
                 address = address.add(2);
             }
-
-            // This is the part that corrupts the flash (+ a good timing)
-            const SCB_AIRCR_VECTKEY: u32 = 0x05FA << 16;
-            const SCB_AIRCR_PRIGROUP_MASK: u32 = 0x7 << 8;
-            const SCB_AIRCR_SYSRESETREQ: u32 = 1 << 2;
-
-            actrl.actrl.modify(|r, w| unsafe {
-                w.bits(
-                    SCB_AIRCR_VECTKEY | r.bits() & SCB_AIRCR_PRIGROUP_MASK | SCB_AIRCR_SYSRESETREQ,
-                )
-            });
 
             // 5. Wait until the BSY bit is cleared in the FLASH_SR register
             self.wait()?;
