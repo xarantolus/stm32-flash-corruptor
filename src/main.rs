@@ -148,18 +148,17 @@ fn main() -> ! {
         bottom = middle;
         peripherals.RTC.bkpr[1].write(|w| unsafe { w.bits(bottom) });
     }
+
+    // We basically do a binary search over multiple resets to find the right time to corrupt
     middle = (bottom + top) / 2;
 
     peripherals.RTC.bkpr[3].write(|w| unsafe { w.bits(STATE_BEFORE_WRITE) });
-
-    // We basically do a binary search over multiple resets to find the right time to corrupt,
-    // but with the similarity check we also jump around a bit to avoid getting stuck
 
     set_green_led(false);
     set_red_led(false);
     set_blue_led(false);
 
-    // First of all, read all of that data to see if we get an interrupt
+    // First of all, read all of the data to see if we get an interrupt
     // If yes, we are already in a corrupted state - nice!
     for i in 0..CORRUPT_RANGE {
         let addr = (APPROXIMATE_ADDRESS_TO_CORRUPT as usize) + i;
@@ -169,11 +168,11 @@ fn main() -> ! {
         core::hint::black_box(data);
     }
 
-    // If we reach this, there is no corruption in the aimed area
+    // If we reach this, there was no corruption in the aimed area
     let mut flash = Flash::new(peripherals.FLASH);
     let page_number = flash.address_to_page_number(APPROXIMATE_ADDRESS_TO_CORRUPT as u32);
 
-    // We use the watchdog to time the corruption (I think? lol)
+    // We use the watchdog to time the corruption 
     activate_watchdog(&peripherals.IWDG).unwrap();
 
     // First of all, we erase the page, as otherwise we can't write to it
@@ -184,20 +183,23 @@ fn main() -> ! {
     watchdog_feed_min(&peripherals.IWDG);
 
     // This gets us towards the time window...
-    // Also it probably isn't exactly cycles, but close enough
+    // Also this definitely isn't exactly cycles, but it does not really matter which unit of time we use
     for _ in 0..middle {
         core::hint::black_box(0);
     }
 
-    // ...and this is the write that actually corrupts the flash
+    // Now we write to actually corrupt the flash.
+    // We basically hope that the watchdog setup was timed perfectly, so that we are in a phase of 
+    // flash writing where power must not be cut, and then we cut it
     flash_unlocked
         .write_dwords(
             APPROXIMATE_ADDRESS_TO_CORRUPT as *mut usize,
-            // We write zero, because the flash page is all 0xff right now
+            // We write zero, because the flash page is all 0xff after erase 
             &[0u64; CORRUPT_RANGE / core::mem::size_of::<u64>() + 1],
         )
         .unwrap();
 
+    // If we reached this, we clearly didn't snipe early enough - after the next reset, we go lower
     peripherals.RTC.bkpr[3].write(|w| unsafe { w.bits(STATE_AFTER_WRITE) });
     set_blue_led(true);
 
