@@ -8,6 +8,12 @@ When reading from a corrupted flash address on STM32 devices with flash ECC, you
 
 That's why this tool offers a way to do exactly that: specifically destroy the error correction information at a specific address. It does this by automatically binary-searching a timing where a reset interferes with the flash writing process.
 
+### How to use
+
+Adjust the address at the top of the [`main.rs`](src/main.rs) file, plug in your debug connector for an STM32L4R5 chip, and then run `make flash`.
+
+You should then see the blue LED of the chip blinking in intervals that get shorter. That is the binary search trying out how much it needs to wait for flash corruption to happen. The light will become seemingly off for some seconds (because the timing gets so short that the LED barely has a chance to be on), and afterwards, either the green or red LED will come on. Green means that the exact address was hit, red means that it was missed. In case of green, you can now flash the code you want to test against the ECC interrupt (make sure not to overwrite the page that now contains the error - erasing it will lead to the error going away), and in case the red LED comes on, you need to press the reset button to try again (sometimes, a power cycle to retry also helps).  
+
 ### How to verify the exact address of the corrupted block
 
 If the green LED comes on, the program has hit the correct spot. To verify the exact address, you can also attach via GDB, and then read the content of the `FLASH_ECCR` register:
