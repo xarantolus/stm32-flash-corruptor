@@ -38,6 +38,7 @@ macro_rules! bad_thing_happened {
     () => {{
         // Turns on the green LED
         let peripherals = unsafe { stm32l4r5::Peripherals::steal() };
+        peripherals.RTC.bkpr[0].write(|w| unsafe { w.bits(0) });
 
         let reg_content = peripherals.FLASH.eccr.read();
         let is_flash_nmi: bool = {
