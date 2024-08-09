@@ -52,7 +52,7 @@ macro_rules! bad_thing_happened {
             }
         };
 
-        let dead_addr = reg_content.addr_ecc().bits();
+        let dead_addr = reg_content.addr_ecc().bits() | ((reg_content.bk_ecc().bit() as u32) << 20);
 
         // If this is an ECC error in the area we wanted, turn on the green LED
         if is_flash_nmi {
